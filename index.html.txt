@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+<meta charset="UTF-8">
+<title>Sistema CENS 451</title>
+
+<style>
+
+body{
+font-family: Arial, sans-serif;
+background:#111;
+color:white;
+margin:0;
+}
+
+header{
+background:#202020;
+padding:15px;
+font-size:22px;
+}
+
+.container{
+padding:20px;
+}
+
+.card{
+background:#1f1f1f;
+padding:15px;
+margin-bottom:10px;
+border-radius:10px;
+cursor:pointer;
+}
+
+.card:hover{
+background:#2b2b2b;
+}
+
+.alumno{
+display:flex;
+justify-content:space-between;
+padding:10px;
+border-bottom:1px solid #333;
+}
+
+button{
+padding:6px 10px;
+border:none;
+border-radius:6px;
+cursor:pointer;
+}
+
+.presente{
+background:#2ecc71;
+}
+
+.ausente{
+background:#e74c3c;
+}
+
+.volver{
+margin-bottom:20px;
+background:#3498db;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<header>
+Sistema Escolar CENS 451
+</header>
+
+<div class="container">
+
+<div id="pantallaMaterias"></div>
+
+<div id="pantallaAlumnos" style="display:none"></div>
+
+</div>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+
+import {
+getFirestore,
+collection,
+getDocs,
+query,
+where,
+doc,
+getDoc,
+addDoc
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const firebaseConfig = {
+
+apiKey: "AIzaSyArC9gKYYvvbS4PdJHNkSql0t521jEd3GQ",
+authDomain: "app-escuela-cens451.firebaseapp.com",
+projectId: "app-escuela-cens451",
+storageBucket: "app-escuela-cens451.firebasestorage.app",
+messagingSenderId: "762114797032",
+appId: "1:762114797032:web:798592de1e91f8ce6ac85d"
+
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const materiasDiv = document.getElementById("pantallaMaterias");
+const alumnosDiv = document.getElementById("pantallaAlumnos");
+
+async function cargarMaterias(){
+
+materiasDiv.innerHTML="<h2>Materias</h2>";
+
+const snapshot = await getDocs(collection(db,"MATERIAS"));
+
+snapshot.forEach(docu=>{
+
+let m = docu.data();
+
+let card = document.createElement("div");
+card.className="card";
+
+card.innerHTML = `
+<h3>${m.nombre}</h3>
+Curso ${m.curso} - Cuatrimestre ${m.cuatrimestre}
+`;
+
+card.onclick = ()=>{
+
+verAlumnos(m.materiaId)
+
+};
+
+materiasDiv.appendChild(card);
+
+});
+
+}
+
+async function verAlumnos(materiaId){
+
+materiasDiv.style.display="none";
+alumnosDiv.style.display="block";
+
+alumnosDiv.innerHTML=`
+<button class="volver" onclick="volver()">Volver</button>
+<h2>Lista de alumnos</h2>
+`;
+
+const q = query(
+collection(db,"inscripciones"),
+where("materiaId","==",materiaId)
+);
+
+const snapshot = await getDocs(q);
+
+snapshot.forEach(async ins=>{
+
+let alumnoId = ins.data().alumnoId;
+
+const ref = doc(db,"usuarios",alumnoId);
+const alumno = await getDoc(ref);
+
+let a = alumno.data();
+
+let div = document.createElement("div");
+div.className="alumno";
+
+div.innerHTML=`
+<span>${a.nombre}</span>
+<span>
+<button class="presente" onclick="presente('${alumnoId}','${materiaId}')">P</button>
+<button class="ausente" onclick="ausente('${alumnoId}','${materiaId}')">A</button>
+</span>
+`;
+
+alumnosDiv.appendChild(div);
+
+});
+
+}
+
+window.volver = ()=>{
+
+alumnosDiv.style.display="none";
+materiasDiv.style.display="block";
+
+}
+
+window.presente = async (alumnoId,materiaId)=>{
+
+await addDoc(collection(db,"asistencia"),{
+
+alumnoId: alumnoId,
+materiaId: materiaId,
+fecha: new Date().toISOString(),
+presente:true
+
+});
+
+alert("Asistencia guardada");
+
+}
+
+window.ausente = async (alumnoId,materiaId)=>{
+
+await addDoc(collection(db,"asistencia"),{
+
+alumnoId: alumnoId,
+materiaId: materiaId,
+fecha: new Date().toISOString(),
+presente:false
+
+});
+
+alert("Ausente guardado");
+
+}
+
+cargarMaterias();
+
+</script>
+
+</body>
+
+</html>
